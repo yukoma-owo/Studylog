@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>STUDY LOG</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="勉強ログ">
+<meta name="theme-color" content="#0d0d0f">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Noto+Sans+JP:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0d0f;
+    --surface: #16161a;
+    --surface2: #1e1e24;
+    --border: #2a2a35;
+    --accent: #ff5f5f;
+    --text: #e8e8f0;
+    --muted: #666680;
+    --green: #50e0a0;
+    --safe-top: env(safe-area-inset-top);
+    --safe-bottom: env(safe-area-inset-bottom);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; overscroll-behavior: none; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Noto Sans JP', sans-serif;
+    min-height: 100vh;
+    padding: calc(24px + var(--safe-top)) 16px calc(60px + var(--safe-bottom));
+  }
+  header { text-align: center; margin-bottom: 28px; }
+  header h1 {
+    font-family: 'Space Mono', monospace; font-size: 1rem;
+    letter-spacing: 0.35em; color: var(--muted); text-transform: uppercase;
+  }
+  .tabs {
+    display: flex; gap: 4px; background: var(--surface);
+    border-radius: 12px; padding: 4px; max-width: 420px;
+    margin: 0 auto 24px; border: 1px solid var(--border);
+  }
+  .tab {
+    flex: 1; padding: 8px; border: none; background: transparent;
+    color: var(--muted); font-family: 'Noto Sans JP', sans-serif;
+    font-size: 0.82rem; border-radius: 9px; cursor: pointer; transition: all 0.2s;
+  }
+  .tab.active { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* TIMER */
+  .subject-scroll {
+    display: flex; gap: 8px; flex-wrap: wrap;
+    justify-content: center; max-width: 460px;
+    margin: 0 auto 18px; padding: 2px 4px;
+  }
+  .subject-btn {
+    padding: 8px 18px; border-radius: 50px;
+    border: 2px solid var(--border); background: transparent;
+    font-family: 'Noto Sans JP', sans-serif; font-size: 0.85rem;
+    cursor: pointer; transition: all 0.2s; color: var(--muted); white-space: nowrap;
+  }
+  .subject-btn.active {
+    border-color: var(--subject-color, #888);
+    color: var(--subject-color, #888);
+    background: color-mix(in srgb, var(--subject-color, #888) 10%, transparent);
+  }
+  .countdown-setup {
+    max-width: 340px; margin: 0 auto 18px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 14px 16px;
+  }
+  .countdown-setup-label {
+    font-size: 0.7rem; color: var(--muted);
+    letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 10px;
+  }
+  .time-presets { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+  .preset-btn {
+    padding: 5px 12px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--surface2); color: var(--muted);
+    font-size: 0.8rem; cursor: pointer; font-family: 'Space Mono', monospace; transition: all 0.2s;
+  }
+  .preset-btn.active { border-color: var(--green); color: var(--green); background: rgba(80,224,160,0.08); }
+  .custom-time-row { display: flex; gap: 6px; align-items: center; }
+  .custom-time-row input {
+    width: 52px; padding: 5px 8px; background: var(--surface2);
+    border: 1px solid var(--border); border-radius: 8px; color: var(--text);
+    font-family: 'Space Mono', monospace; font-size: 0.85rem; text-align: center;
+  }
+  .custom-time-row input:focus { outline: none; border-color: var(--green); }
+  .custom-time-row span { color: var(--muted); font-size: 0.8rem; }
+  .btn-set {
+    padding: 5px 14px; border-radius: 8px; border: none;
+    background: var(--green); color: #000;
+    font-size: 0.8rem; cursor: pointer; font-family: 'Noto Sans JP', sans-serif; font-weight: 700;
+  }
+  .done-banner {
+    display: none; background: rgba(80,224,160,0.1);
+    border: 1px solid var(--green); border-radius: 12px;
+    text-align: center; padding: 10px; margin: 0 auto 14px;
+    max-width: 340px; color: var(--green); font-size: 0.9rem; font-weight: 700;
+  }
+  .done-banner.show { display: block; }
+  .timer-ring-wrap { display: flex; flex-direction: column; align-items: center; margin-bottom: 22px; }
+  .timer-ring { position: relative; width: 200px; height: 200px; }
+  .timer-ring svg { transform: rotate(-90deg); position: absolute; top: 0; left: 0; }
+  .timer-ring-bg { fill: none; stroke: var(--border); stroke-width: 6; }
+  .timer-ring-fill {
+    fill: none; stroke-width: 6; stroke-linecap: round;
+    stroke-dasharray: 565; stroke-dashoffset: 565;
+    transition: stroke-dashoffset 1s linear, stroke 0.3s;
+  }
+  .timer-display {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%); text-align: center;
+  }
+  .timer-time { font-family: 'Space Mono', monospace; font-size: 2.4rem; font-weight: 700; line-height: 1; letter-spacing: -0.02em; }
+  .timer-sublabel { font-size: 0.65rem; color: var(--muted); margin-top: 5px; letter-spacing: 0.15em; }
+  .timer-goal-label { font-size: 0.68rem; color: var(--muted); margin-top: 4px; font-family: 'Space Mono', monospace; }
+  .timer-controls { display: flex; gap: 14px; justify-content: center; margin-bottom: 22px; }
+  .btn-main {
+    width: 64px; height: 64px; border-radius: 50%; border: none;
+    font-size: 1.4rem; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+  }
+  .btn-play { background: var(--green); color: #000; width: 76px; height: 76px; font-size: 1.6rem; box-shadow: 0 0 24px rgba(80,224,160,0.3); }
+  .btn-play:active { transform: scale(0.95); }
+  .btn-save { background: var(--accent); color: #fff; box-shadow: 0 0 18px rgba(255,95,95,0.2); }
+  .btn-reset { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+  .today-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 14px 16px; max-width: 420px; margin: 0 auto; }
+  .today-card-label { font-size: 0.7rem; color: var(--muted); letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 10px; }
+  .today-grid { display: flex; gap: 8px; flex-wrap: wrap; }
+  .today-item { flex: 1; min-width: 80px; background: var(--surface2); border-radius: 10px; padding: 9px 12px; border: 1px solid var(--border); }
+  .today-item .ti-name { font-size: 0.72rem; margin-bottom: 3px; }
+  .today-item .ti-time { font-family: 'Space Mono', monospace; font-size: 1rem; font-weight: 700; }
+
+  /* SUBJECTS */
+  .subjects-page { max-width: 420px; margin: 0 auto; }
+  .subjects-page h2 { font-size: 0.75rem; color: var(--muted); letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 14px; }
+  .subject-list-manage { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; }
+  .subject-manage-item { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+  .subject-color-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+  .subject-manage-name { flex: 1; font-size: 0.9rem; }
+  .btn-delete-subject { background: none; border: none; color: var(--muted); font-size: 1.1rem; cursor: pointer; padding: 2px 6px; border-radius: 6px; transition: color 0.2s; }
+  .btn-delete-subject:hover { color: var(--accent); }
+  .add-subject-form { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
+  .add-subject-form h3 { font-size: 0.75rem; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 12px; }
+  .add-subject-form input[type="text"] { width: 100%; padding: 9px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: 'Noto Sans JP', sans-serif; font-size: 0.9rem; margin-bottom: 12px; }
+  .add-subject-form input[type="text"]:focus { outline: none; border-color: var(--green); }
+  .color-picker-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .color-swatch { width: 28px; height: 28px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: all 0.15s; }
+  .color-swatch.selected { border-color: #fff; transform: scale(1.15); }
+  .btn-add-subject { width: 100%; padding: 10px; background: var(--green); color: #000; border: none; border-radius: 10px; font-family: 'Noto Sans JP', sans-serif; font-size: 0.9rem; font-weight: 700; cursor: pointer; }
+
+  /* RECORDS */
+  .graph-section { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 18px; margin-bottom: 16px; max-width: 500px; margin-left: auto; margin-right: auto; }
+  .graph-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+  .section-title { font-size: 0.72rem; color: var(--muted); letter-spacing: 0.15em; text-transform: uppercase; }
+  .graph-toggle { display: flex; gap: 3px; background: var(--surface2); border-radius: 8px; padding: 3px; border: 1px solid var(--border); }
+  .graph-toggle-btn { padding: 4px 11px; border: none; background: transparent; color: var(--muted); font-size: 0.72rem; font-family: 'Noto Sans JP', sans-serif; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+  .graph-toggle-btn.active { background: var(--border); color: var(--text); }
+  canvas { width: 100% !important; max-height: 180px; }
+  .records-list { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 18px; max-width: 500px; margin: 0 auto; }
+  .record-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .record-item:last-child { border-bottom: none; }
+  .record-date { font-size: 0.78rem; color: var(--muted); min-width: 70px; }
+  .record-subjects { display: flex; gap: 8px; flex-wrap: wrap; flex: 1; justify-content: center; }
+  .record-subject-time { font-family: 'Space Mono', monospace; font-size: 0.78rem; }
+  .rs-label { font-size: 0.66rem; margin-right: 2px; opacity: 0.8; }
+  .record-total { font-family: 'Space Mono', monospace; font-size: 0.88rem; font-weight: 700; min-width: 50px; text-align: right; }
+  .empty-state { text-align: center; color: var(--muted); padding: 28px 0; font-size: 0.85rem; }
+
+  /* INSTALL BANNER */
+  .install-banner {
+    display: none; background: var(--surface); border: 1px solid var(--green);
+    border-radius: 14px; padding: 12px 16px; max-width: 420px;
+    margin: 0 auto 18px; align-items: center; gap: 12px;
+  }
+  .install-banner.show { display: flex; }
+  .install-banner p { flex: 1; font-size: 0.8rem; color: var(--text); line-height: 1.5; }
+  .install-banner p span { color: var(--green); font-weight: 700; }
+  .btn-dismiss { background: none; border: none; color: var(--muted); font-size: 1.2rem; cursor: pointer; }
+
+  .toast {
+    position: fixed; bottom: calc(24px + var(--safe-bottom)); left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--green); color: #000;
+    padding: 10px 24px; border-radius: 50px;
+    font-size: 0.85rem; font-weight: 700;
+    transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+    pointer-events: none; white-space: nowrap; z-index: 100;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<header><h1>STUDY LOG</h1></header>
+
+<!-- iOS install hint -->
+<div class="install-banner" id="installBanner">
+  <p>ホーム画面に追加できるよ！<br><span>Safari → 共有 → ホーム画面に追加</span></p>
+  <button class="btn-dismiss" onclick="dismissInstall()">×</button>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('timer')">タイマー</button>
+  <button class="tab" onclick="switchTab('records')">記録</button>
+  <button class="tab" onclick="switchTab('subjects')">教科</button>
+</div>
+
+<!-- TIMER -->
+<div class="page active" id="page-timer">
+  <div class="subject-scroll" id="subjectBtns"></div>
+  <div class="countdown-setup">
+    <div class="countdown-setup-label">目標時間</div>
+    <div class="time-presets">
+      <button class="preset-btn" data-min="30" onclick="setPreset(30)">30分</button>
+      <button class="preset-btn active" data-min="60" onclick="setPreset(60)">1h</button>
+      <button class="preset-btn" data-min="90" onclick="setPreset(90)">1.5h</button>
+      <button class="preset-btn" data-min="120" onclick="setPreset(120)">2h</button>
+      <button class="preset-btn" data-min="180" onclick="setPreset(180)">3h</button>
+    </div>
+    <div class="custom-time-row">
+      <input type="number" id="customH" placeholder="0" min="0" max="9">
+      <span>時間</span>
+      <input type="number" id="customM" placeholder="0" min="0" max="59">
+      <span>分</span>
+      <button class="btn-set" onclick="setCustomTime()">セット</button>
+    </div>
+  </div>
+  <div class="done-banner" id="doneBanner">目標達成！お疲れ様！</div>
+  <div class="timer-ring-wrap">
+    <div class="timer-ring">
+      <svg width="200" height="200" viewBox="0 0 200 200">
+        <circle class="timer-ring-bg" cx="100" cy="100" r="90"/>
+        <circle class="timer-ring-fill" id="ringFill" cx="100" cy="100" r="90"/>
+      </svg>
+      <div class="timer-display">
+        <div class="timer-time" id="timerDisplay">1:00:00</div>
+        <div class="timer-sublabel" id="timerSubjectLabel">数学</div>
+        <div class="timer-goal-label" id="goalLabel">/ 1:00:00</div>
+      </div>
+    </div>
+  </div>
+  <div class="timer-controls">
+    <button class="btn-main btn-reset" onclick="resetTimer()">↺</button>
+    <button class="btn-main btn-play" id="playBtn" onclick="toggleTimer()">▶</button>
+    <button class="btn-main btn-save" onclick="saveSession()">■</button>
+  </div>
+  <div class="today-card">
+    <div class="today-card-label">TODAY</div>
+    <div class="today-grid" id="todayGrid"></div>
+  </div>
+</div>
+
+<!-- RECORDS -->
+<div class="page" id="page-records">
+  <div class="graph-section">
+    <div class="graph-header">
+      <div class="section-title">グラフ</div>
+      <div class="graph-toggle">
+        <button class="graph-toggle-btn active" id="btnWeek" onclick="switchGraph('week')">週</button>
+        <button class="graph-toggle-btn" id="btnMonth" onclick="switchGraph('month')">月</button>
+      </div>
+    </div>
+    <canvas id="studyChart"></canvas>
+  </div>
+  <div class="records-list">
+    <div class="section-title" style="margin-bottom:14px">記録</div>
+    <div id="recordsList"></div>
+  </div>
+</div>
+
+<!-- SUBJECTS -->
+<div class="page" id="page-subjects">
+  <div class="subjects-page">
+    <h2>教科管理</h2>
+    <div class="subject-list-manage" id="subjectManageList"></div>
+    <div class="add-subject-form">
+      <h3>追加する</h3>
+      <input type="text" id="newSubjectName" placeholder="教科名（例：国語）" maxlength="10">
+      <div class="color-picker-row" id="colorPicker"></div>
+      <button class="btn-add-subject" onclick="addSubject()">追加する</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+// PWA: service worker
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(e => console.warn('SW:', e));
+  });
+}
+
+// iOS install banner
+function checkInstallBanner() {
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isStandalone = window.navigator.standalone;
+  const dismissed = localStorage.getItem('installDismissed');
+  if (isIOS && !isStandalone && !dismissed) {
+    document.getElementById('installBanner').classList.add('show');
+  }
+}
+function dismissInstall() {
+  document.getElementById('installBanner').classList.remove('show');
+  localStorage.setItem('installDismissed', '1');
+}
+
+// ===== DATA =====
+const COLORS = ['#f0c060','#60c0f0','#f06090','#90e060','#c090f0','#f09050','#50e0c0','#e0a0d0'];
+
+function getSubjects() {
+  try { const s = JSON.parse(localStorage.getItem('studySubjects')); if (s && s.length) return s; } catch {}
+  return [{ name: '数学', color: '#f0c060' }, { name: '英語', color: '#60c0f0' }];
+}
+function saveSubjectsLS(s) { localStorage.setItem('studySubjects', JSON.stringify(s)); }
+function getRecords() { try { return JSON.parse(localStorage.getItem('studyRecords') || '[]'); } catch { return []; } }
+function saveRecords(r) { localStorage.setItem('studyRecords', JSON.stringify(r)); }
+function getTodayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+let currentSubject = getSubjects()[0].name;
+let goalSeconds = 3600, remainSeconds = 3600, elapsed = 0;
+let timerInterval = null, isRunning = false, selectedColor = COLORS[2];
+
+function renderSubjectBtns() {
+  document.getElementById('subjectBtns').innerHTML = getSubjects().map(s =>
+    `<button class="subject-btn${s.name===currentSubject?' active':''}"
+      style="--subject-color:${s.color}" onclick="selectSubject('${s.name}')">${s.name}</button>`
+  ).join('');
+}
+function selectSubject(name) {
+  if (isRunning) return;
+  currentSubject = name;
+  renderSubjectBtns();
+  document.getElementById('timerSubjectLabel').textContent = name;
+  updateRingColor();
+}
+function updateRingColor() {
+  const s = getSubjects().find(s => s.name === currentSubject);
+  document.getElementById('ringFill').style.stroke = s ? s.color : '#888';
+}
+function setPreset(min) {
+  if (isRunning) return;
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector(`.preset-btn[data-min="${min}"]`).classList.add('active');
+  goalSeconds = min * 60; remainSeconds = goalSeconds; elapsed = 0;
+  document.getElementById('doneBanner').classList.remove('show');
+  updateTimerDisplay();
+}
+function setCustomTime() {
+  if (isRunning) return;
+  const h = parseInt(document.getElementById('customH').value)||0;
+  const m = parseInt(document.getElementById('customM').value)||0;
+  const total = (h*60+m)*60;
+  if (total<=0) { showToast('時間を入力してね'); return; }
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+  goalSeconds = total; remainSeconds = goalSeconds; elapsed = 0;
+  document.getElementById('doneBanner').classList.remove('show');
+  updateTimerDisplay();
+}
+function formatHMS(sec) {
+  const h=Math.floor(sec/3600), m=Math.floor((sec%3600)/60), s=sec%60;
+  if (h>0) return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+function formatMin(sec) {
+  const h=Math.floor(sec/3600), m=Math.floor((sec%3600)/60);
+  if (h>0) return `${h}:${String(m).padStart(2,'0')}`;
+  return `${m}:${String(sec%60).padStart(2,'0')}`;
+}
+function updateTimerDisplay() {
+  document.getElementById('timerDisplay').textContent = formatHMS(remainSeconds);
+  document.getElementById('goalLabel').textContent = `/ ${formatHMS(goalSeconds)}`;
+  const progress = goalSeconds>0 ? 1-(remainSeconds/goalSeconds) : 0;
+  document.getElementById('ringFill').style.strokeDashoffset = 565*(1-progress);
+  updateRingColor();
+}
+function toggleTimer() {
+  if (isRunning) {
+    clearInterval(timerInterval); isRunning=false;
+    document.getElementById('playBtn').textContent='▶';
+  } else {
+    if (remainSeconds<=0) return;
+    document.getElementById('doneBanner').classList.remove('show');
+    isRunning=true; document.getElementById('playBtn').textContent='⏸';
+    timerInterval = setInterval(()=>{
+      remainSeconds--; elapsed++;
+      updateTimerDisplay();
+      if (remainSeconds<=0) {
+        clearInterval(timerInterval); isRunning=false;
+        document.getElementById('playBtn').textContent='▶';
+        document.getElementById('doneBanner').classList.add('show');
+        _doSave(); showToast('目標達成！記録したよ');
+      }
+    },1000);
+  }
+}
+function resetTimer() {
+  clearInterval(timerInterval); isRunning=false;
+  remainSeconds=goalSeconds; elapsed=0;
+  document.getElementById('playBtn').textContent='▶';
+  document.getElementById('doneBanner').classList.remove('show');
+  updateTimerDisplay();
+}
+function saveSession() {
+  if (elapsed<10) { showToast('10秒以上計測してね'); return; }
+  clearInterval(timerInterval); isRunning=false;
+  document.getElementById('playBtn').textContent='▶';
+  _doSave(); showToast('記録を保存したよ');
+  remainSeconds=goalSeconds; updateTimerDisplay();
+}
+function _doSave() {
+  if (elapsed<=0) return;
+  const records=getRecords(), key=getTodayKey();
+  let day=records.find(r=>r.date===key);
+  if (!day) { day={date:key}; records.unshift(day); }
+  day[currentSubject]=(day[currentSubject]||0)+elapsed;
+  saveRecords(records); elapsed=0; renderTodayGrid();
+}
+function renderTodayGrid() {
+  const subjects=getSubjects(), records=getRecords(), day=records.find(r=>r.date===getTodayKey());
+  document.getElementById('todayGrid').innerHTML=subjects.map(s=>{
+    const t=day?(day[s.name]||0):0;
+    return `<div class="today-item"><div class="ti-name" style="color:${s.color}">${s.name}</div><div class="ti-time" style="color:${s.color}">${formatMin(t)}</div></div>`;
+  }).join('');
+}
+function renderSubjectManage() {
+  const subjects=getSubjects();
+  document.getElementById('subjectManageList').innerHTML=subjects.map((s,i)=>
+    `<div class="subject-manage-item">
+      <div class="subject-color-dot" style="background:${s.color}"></div>
+      <div class="subject-manage-name">${s.name}</div>
+      ${subjects.length>1?`<button class="btn-delete-subject" onclick="deleteSubject(${i})">×</button>`:''}
+    </div>`
+  ).join('');
+}
+function renderColorPicker() {
+  document.getElementById('colorPicker').innerHTML=COLORS.map(c=>
+    `<div class="color-swatch${c===selectedColor?' selected':''}" style="background:${c}" onclick="pickColor('${c}')"></div>`
+  ).join('');
+}
+function pickColor(c) { selectedColor=c; renderColorPicker(); }
+function addSubject() {
+  const name=document.getElementById('newSubjectName').value.trim();
+  if (!name) { showToast('名前を入力してね'); return; }
+  const subjects=getSubjects();
+  if (subjects.find(s=>s.name===name)) { showToast('同じ名前の教科がある'); return; }
+  subjects.push({name,color:selectedColor});
+  saveSubjectsLS(subjects);
+  document.getElementById('newSubjectName').value='';
+  renderSubjectManage(); renderSubjectBtns(); renderTodayGrid();
+  showToast(`${name} を追加したよ`);
+}
+function deleteSubject(i) {
+  const subjects=getSubjects();
+  if (subjects.length<=1) return;
+  const name=subjects[i].name;
+  subjects.splice(i,1); saveSubjectsLS(subjects);
+  if (currentSubject===name) currentSubject=subjects[0].name;
+  renderSubjectManage(); renderSubjectBtns(); renderTodayGrid();
+  showToast(`${name} を削除したよ`);
+}
+
+let graphMode='week', chartInstance=null;
+function switchGraph(mode) {
+  graphMode=mode;
+  document.getElementById('btnWeek').classList.toggle('active',mode==='week');
+  document.getElementById('btnMonth').classList.toggle('active',mode==='month');
+  drawChart();
+}
+function drawChart() {
+  const records=getRecords(), subjects=getSubjects(), today=new Date();
+  const days=graphMode==='week'?7:30, labels=[], dates=[];
+  for (let i=days-1;i>=0;i--) {
+    const d=new Date(today); d.setDate(d.getDate()-i);
+    const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    dates.push(key);
+    labels.push(graphMode==='week'?'日月火水木金土'[d.getDay()]:`${d.getDate()}`);
+  }
+  const datasets=subjects.map(s=>({
+    label:s.name,
+    data:dates.map(k=>{const r=records.find(x=>x.date===k);return r?Math.round((r[s.name]||0)/60):0;}),
+    backgroundColor:s.color+'b0', borderRadius:4, borderSkipped:false
+  }));
+  const ctx=document.getElementById('studyChart').getContext('2d');
+  if (chartInstance) chartInstance.destroy();
+  chartInstance=new Chart(ctx,{
+    type:'bar', data:{labels,datasets},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{labels:{color:'#888',font:{size:10},boxWidth:10}},
+        tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${c.raw}分`}}
+      },
+      scales:{
+        x:{stacked:true,ticks:{color:'#555',font:{size:9}},grid:{display:false}},
+        y:{stacked:true,ticks:{color:'#555',font:{size:9},callback:v=>v+'分'},grid:{color:'rgba(255,255,255,0.04)'},beginAtZero:true}
+      }
+    }
+  });
+}
+function renderRecords() {
+  const records=getRecords(), subjects=getSubjects(), el=document.getElementById('recordsList');
+  if (!records.length) { el.innerHTML='<div class="empty-state">まだ記録がないよ</div>'; drawChart(); return; }
+  el.innerHTML=records.slice(0,30).map(r=>{
+    const total=subjects.reduce((sum,s)=>sum+(r[s.name]||0),0);
+    const times=subjects.filter(s=>(r[s.name]||0)>0)
+      .map(s=>`<div class="record-subject-time" style="color:${s.color}"><span class="rs-label">${s.name.slice(0,1)}</span>${formatMin(r[s.name])}</div>`).join('');
+    return `<div class="record-item"><div class="record-date">${formatDate(r.date)}</div><div class="record-subjects">${times}</div><div class="record-total">${formatMin(total)}</div></div>`;
+  }).join('');
+  drawChart();
+}
+function formatDate(key) {
+  const [y,m,d]=key.split('-'), date=new Date(y,m-1,d);
+  return `${m}/${d}(${'日月火水木金土'[date.getDay()]})`;
+}
+function switchTab(tab) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+tab).classList.add('active');
+  ['timer','records','subjects'].forEach((t,i)=>{ if(t===tab) document.querySelectorAll('.tab')[i].classList.add('active'); });
+  if (tab==='records') renderRecords();
+  if (tab==='subjects') { renderSubjectManage(); renderColorPicker(); }
+}
+function showToast(msg) {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+// INIT
+checkInstallBanner();
+renderSubjectBtns();
+renderTodayGrid();
+updateTimerDisplay();
+document.getElementById('timerSubjectLabel').textContent=currentSubject;
+</script>
+</body>
+</html>
